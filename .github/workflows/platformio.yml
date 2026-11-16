@@ -1,0 +1,95 @@
+# Golden pipeline PlatformIO : build d'un ou plusieurs envs, publication des
+# firmware.bin + SHA256SUMS. Conçu pour les runners ARC du cluster k3s lab
+# (scale set arc-<repo>, sans secret, egress Internet seul).
+#
+# Usage :
+#   jobs:
+#     firmware:
+#       uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/platformio.yml@v1
+#       with:
+#         runner: arc-<repo>
+#         working-directory: firmware
+#         envs: board board_clean
+name: platformio
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Label runs-on (scale set ARC du dépôt, ex. arc-remote-hid)
+        type: string
+        required: true
+      working-directory:
+        description: Dossier contenant platformio.ini
+        type: string
+        default: "."
+      envs:
+        description: Envs PlatformIO à compiler, séparés par des espaces
+        type: string
+        required: true
+      platformio-version:
+        description: Version pip de PlatformIO (vide = dernière)
+        type: string
+        default: ""
+      artifact-name:
+        description: Nom de l'artefact (vide = firmware-<sha>)
+        type: string
+        default: ""
+      retention-days:
+        type: number
+        default: 30
+      timeout-minutes:
+        type: number
+        default: 45
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toolchains (~1 Go pour ESP32) : clé = platformio.ini du projet
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles(format('{0}/platformio.ini', inputs.working-directory)) }}
+
+      # python3 de l'image runner : pas de setup-python à télécharger
+      - name: Install PlatformIO
+        env:
+          PIO_VERSION: ${{ inputs.platformio-version }}
+        run: |
+          python3 -m venv ~/.venvs/pio
+          ~/.venvs/pio/bin/pip install -q --upgrade "platformio${PIO_VERSION:+==$PIO_VERSION}"
+          ~/.venvs/pio/bin/pio --version
+
+      - name: Build
+        env:
+          ENVS: ${{ inputs.envs }}
+        run: |
+          set -euo pipefail
+          args=(); for e in $ENVS; do args+=(-e "$e"); done
+          ~/.venvs/pio/bin/pio run "${args[@]}"
+
+      - name: Collect images
+        env:
+          ENVS: ${{ inputs.envs }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          for e in $ENVS; do cp ".pio/build/$e/firmware.bin" "$RUNNER_TEMP/out/$e.bin"; done
+          (cd "$RUNNER_TEMP/out" && sha256sum *.bin > SHA256SUMS && cat SHA256SUMS)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name != '' && inputs.artifact-name || format('firmware-{0}', github.sha) }}
+          path: ${{ runner.temp }}/out/
+          retention-days: ${{ inputs.retention-days }}

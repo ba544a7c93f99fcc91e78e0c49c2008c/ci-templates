@@ -10,6 +10,7 @@ projects. Jobs run on the ARC runners of the k3s `lab` cluster: one scale set
 | Workflow | Purpose | Key inputs |
 |---|---|---|
 | `platformio.yml` | Build PlatformIO envs, publish `firmware.bin` + `SHA256SUMS` | `runner`, `working-directory`, `envs` |
+| `oci-image.yml` | Build a Docker image, push to ghcr.io (`<sha>` + `latest`), keep the last 2 versions; push events only | `runner` (`docker-<repo>`), `image`, `context`, `dockerfile` |
 
 ## Usage
 
@@ -21,6 +22,19 @@ jobs:
       runner: arc-<repo>
       working-directory: firmware
       envs: board board_clean
+```
+
+`oci-image.yml` runs on the dedicated self-hosted Docker runners
+(`runner: docker-<repo>`), not on ARC. It needs `packages: write` on the caller job.
+
+```yaml
+jobs:
+  image:
+    permissions: {contents: read, packages: write}
+    uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/oci-image.yml@v1
+    with:
+      runner: docker-<repo>
+      image: ghcr.io/<owner>/<name>
 ```
 
 ## Versioning

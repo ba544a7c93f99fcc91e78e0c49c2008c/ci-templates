@@ -1,0 +1,87 @@
+# Golden pipeline image OCI : build Docker + push vers ghcr.io, puis rétention
+# N-2 (on ne garde que les 2 dernières versions du paquet). Conçu pour les
+# runners self-hosted dédiés (label docker-<repo>) qui disposent de Docker.
+# Ne s'exécute que sur push (tags et main), jamais sur pull_request.
+#
+# Usage :
+#   jobs:
+#     image:
+#       uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/oci-image.yml@v1
+#       with:
+#         runner: docker-<repo>
+#         image: ghcr.io/<owner>/<name>
+name: oci-image
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Label runs-on (runner self-hosted docker-<repo>)
+        type: string
+        required: true
+      context:
+        description: Contexte de build Docker
+        type: string
+        default: "."
+      dockerfile:
+        description: Chemin du Dockerfile
+        type: string
+        default: Dockerfile
+      image:
+        description: Image cible, ghcr.io/<owner>/<name>
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-push:
+    if: github.event_name == 'push'
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Référence d'image en minuscules (ghcr.io l'exige) + nom du paquet
+      # (dernier segment) pour la rétention N-2
+      - name: Normaliser l'image
+        id: img
+        env:
+          IMAGE: ${{ inputs.image }}
+        run: |
+          ref="${IMAGE,,}"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "name=${ref##*/}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: true
+          # Sans attestations : sinon les manifestes d'attestation comptent
+          # comme versions ghcr et faussent la rétention N-2
+          provenance: false
+          sbom: false
+          # Lie le paquet au dépôt appelant (GITHUB_TOKEN peut alors supprimer ses versions)
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.img.outputs.ref }}:${{ github.sha }}
+            ${{ steps.img.outputs.ref }}:latest
+
+      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5
+        with:
+          package-name: ${{ steps.img.outputs.name }}
+          package-type: container
+          min-versions-to-keep: 2

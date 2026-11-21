@@ -53,24 +53,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Référence d'image en minuscules (ghcr.io l'exige) + nom du paquet
+      # (dernier segment) pour la rétention N-2
+      - name: Normaliser l'image
+        id: img
+        env:
+          IMAGE: ${{ inputs.image }}
+        run: |
+          ref="${IMAGE,,}"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "name=${ref##*/}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           push: true
+          # Sans attestations : sinon les manifestes d'attestation comptent
+          # comme versions ghcr et faussent la rétention N-2
+          provenance: false
+          sbom: false
+          # Lie le paquet au dépôt appelant (GITHUB_TOKEN peut alors supprimer ses versions)
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           tags: |
-            ${{ inputs.image }}:${{ github.sha }}
-            ${{ inputs.image }}:latest
-
-      # Rétention N-2 : nom du paquet = dernier segment de l'image
-      - name: Nom du paquet
-        id: pkg
-        env:
-          IMAGE: ${{ inputs.image }}
-        run: echo "name=${IMAGE##*/}" >> "$GITHUB_OUTPUT"
+            ${{ steps.img.outputs.ref }}:${{ github.sha }}
+            ${{ steps.img.outputs.ref }}:latest
 
       - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5
         with:
-          package-name: ${{ steps.pkg.outputs.name }}
+          package-name: ${{ steps.img.outputs.name }}
           package-type: container
           min-versions-to-keep: 2

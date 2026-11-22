@@ -1,4 +1,4 @@
-# ci-templates
+# homelab-ci-templates
 
 Reusable GitHub Actions workflows ("golden pipelines") shared by the non-infra
 projects. Jobs run on the ARC runners of the k3s `lab` cluster: one scale set
@@ -17,7 +17,7 @@ projects. Jobs run on the ARC runners of the k3s `lab` cluster: one scale set
 ```yaml
 jobs:
   firmware:
-    uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/platformio.yml@v1
+    uses: ba544a7c93f99fcc91e78e0c49c2008c/homelab-ci-templates/.github/workflows/platformio.yml@v1
     with:
       runner: arc-<repo>
       working-directory: firmware
@@ -31,7 +31,7 @@ jobs:
 jobs:
   image:
     permissions: {contents: read, packages: write}
-    uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/oci-image.yml@v1
+    uses: ba544a7c93f99fcc91e78e0c49c2008c/homelab-ci-templates/.github/workflows/oci-image.yml@v1
     with:
       runner: docker-<repo>
       image: ghcr.io/<owner>/<name>

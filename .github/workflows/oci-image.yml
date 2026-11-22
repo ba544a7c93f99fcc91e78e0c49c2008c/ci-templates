@@ -6,7 +6,7 @@
 # Usage :
 #   jobs:
 #     image:
-#       uses: ba544a7c93f99fcc91e78e0c49c2008c/ci-templates/.github/workflows/oci-image.yml@v1
+#       uses: ba544a7c93f99fcc91e78e0c49c2008c/homelab-ci-templates/.github/workflows/oci-image.yml@v1
 #       with:
 #         runner: docker-<repo>
 #         image: ghcr.io/<owner>/<name>

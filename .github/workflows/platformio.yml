@@ -53,11 +53,11 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Toolchains (~1 Go pour ESP32) : clé = platformio.ini du projet
       - name: Cache PlatformIO
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.platformio
           key: pio-${{ runner.os }}-${{ hashFiles(format('{0}/platformio.ini', inputs.working-directory)) }}
@@ -88,7 +88,7 @@ jobs:
           for e in $ENVS; do cp ".pio/build/$e/firmware.bin" "$RUNNER_TEMP/out/$e.bin"; done
           (cd "$RUNNER_TEMP/out" && sha256sum *.bin > SHA256SUMS && cat SHA256SUMS)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact-name != '' && inputs.artifact-name || format('firmware-{0}', github.sha) }}
           path: ${{ runner.temp }}/out/

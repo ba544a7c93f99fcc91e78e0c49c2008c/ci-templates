@@ -1,0 +1,10 @@
+# Mises à jour des actions utilisées par les templates (natif GitHub).
+# Après merge : tag vX.Y puis déplacer v1 (les dépôts appellent @v1).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: monthly}
+    groups:
+      actions: {patterns: ["*"]}
+    commit-message: {prefix: "chore(deps)"}

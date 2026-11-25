@@ -10,7 +10,7 @@ projects. Jobs run on the ARC runners of the k3s `lab` cluster: one scale set
 | Workflow | Purpose | Key inputs |
 |---|---|---|
 | `platformio.yml` | Build PlatformIO envs, publish `firmware.bin` + `SHA256SUMS` | `runner`, `working-directory`, `envs` |
-| `oci-image.yml` | Build a Docker image, push to ghcr.io (`<sha>` + `latest`), keep the last 2 versions; push events only | `runner` (`docker-<repo>`), `image`, `context`, `dockerfile` |
+| `oci-image.yml` | Build a Docker image, push to ghcr.io (`<sha>` + `latest`), keep the last 2 versions; push events only | `runner` (`docker-<repo>`), `image`, `context`, `dockerfile`, `build-args` (optional, one `NAME=value` per line) |
 
 ## Usage
 

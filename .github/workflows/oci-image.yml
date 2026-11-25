@@ -31,6 +31,10 @@ on:
         description: Image cible, ghcr.io/<owner>/<name>
         type: string
         required: true
+      build-args:
+        description: "Arguments de build, un NOM=valeur par ligne (ex. GIT_SHA=<sha du commit>)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -68,6 +72,7 @@ jobs:
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
+          build-args: ${{ inputs.build-args }}
           push: true
           # Sans attestations : sinon les manifestes d'attestation comptent
           # comme versions ghcr et faussent la rétention N-2
